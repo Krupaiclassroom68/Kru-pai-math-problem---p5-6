@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Math Market Challenge 🛍️ ภารกิจร้านคณิตแฟร์ (สุ่มช้อยส์)</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#eafcf4; --bg2:#fffbe7; --ink:#0b1222; --muted:#0f766e;
+  --wire:rgba(6,95,70,.2); --accent:#34d399; --accent2:#fde047; --danger:#ef4444; --ok:#16a34a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:"Kanit","Noto Sans Thai",sans-serif;color:var(--ink);
+  background:radial-gradient(1200px 720px at 50% -10%,#dcfce7 0%,var(--bg1) 50%,var(--bg2) 100%);
+}
+.wrap{max-width:900px;margin:auto;padding:20px}
+header{text-align:center;margin-bottom:16px}
+.brand{font-weight:900;font-size:clamp(22px,5vw,40px);
+  background:linear-gradient(90deg,#10b981,#ef4444,#f59e0b,#10b981);
+  -webkit-background-clip:text;color:transparent;text-shadow:0 8px 24px rgba(0,0,0,.08);
+}
+.subtitle{color:var(--muted);font-size:clamp(14px,3vw,18px)}
+
+.hud{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  border:1.5px solid var(--wire);border-radius:12px;
+  background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,255,255,.8));
+  box-shadow:0 8px 20px rgba(0,0,0,.05);padding:10px 14px;margin-bottom:14px}
+.score{font-weight:900;color:#a16207}
+.combo{font-weight:900;color:#065f46}
+
+.card{border:1.5px solid var(--wire);border-radius:18px;
+  background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.88));
+  padding:18px;box-shadow:0 16px 48px rgba(0,0,0,.08)}
+.btn{border:none;border-radius:14px;cursor:pointer;
+  font-weight:900;font-size:18px;padding:12px 18px;
+  background:linear-gradient(145deg,#a7f3d0,#fde68a);color:#064e3b;
+  box-shadow:0 8px 0 #d9f99d,0 18px 30px rgba(0,0,0,.08)}
+.btn:active{transform:translateY(2px)}
+
+.choice{position:relative;border:2px solid rgba(6,95,70,.15);
+  background:linear-gradient(145deg,rgba(167,243,208,.25),rgba(254,240,138,.3));
+  padding:14px;border-radius:14px;cursor:pointer;font-weight:900;
+  box-shadow:0 8px 20px rgba(0,0,0,.08);transition:transform .06s,box-shadow .2s}
+.choice:hover{transform:translateY(-2px)}
+.choice.correct{outline:3px solid var(--ok)}
+.choice.wrong{outline:3px solid var(--danger)}
+
+.next{background:linear-gradient(90deg,#bef264,#fef08a);font-weight:900;
+  border:none;padding:12px 20px;border-radius:12px;cursor:pointer}
+.status{margin-top:12px;font-weight:800}
+.oktxt{color:#15803d}.badtxt{color:#b91c1c}
+.panel.show{display:block;animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+canvas.fire{position:fixed;inset:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Math Market Challenge 🛍️ ภารกิจร้านคณิตแฟร์</div>
+    <div class="subtitle">3 ตัวเลือก • ไม่มีจับเวลา • สุ่มตำแหน่งคำตอบ • มีคอมโบ + ดอกไม้ไฟ</div>
+  </header>
+
+  <div class="hud">
+    <div class="score">คะแนน: <span id="total">0</span></div>
+    <div class="combo">คอมโบ: <span id="combo">x1.0</span></div>
+  </div>
+
+  <section id="home" class="card">
+    <h2>พร้อมขายในร้านคณิตแฟร์หรือยัง? 💸</h2>
+    <button class="btn" id="startBtn">เริ่มเกม 🎮</button>
+  </section>
+
+  <section id="quiz" class="card" style="display:none">
+    <div id="caseId">Q-01</div>
+    <div id="stem" class="stem">—</div>
+    <div id="choices"></div>
+    <div class="status" id="status"></div>
+    <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+      <button class="next" id="nextBtn" disabled>ข้อถัดไป →</button>
+      <div>คะแนนข้อนี้: <span id="slot">5</span></div>
+    </div>
+  </section>
+
+  <section id="end" class="card" style="display:none;text-align:center">
+    <h2>Mission Complete!</h2>
+    <p id="endMsg"></p>
+    <button class="btn" onclick="location.reload()">เล่นอีกครั้ง 🔁</button>
+  </section>
+</div>
+<canvas id="fire1" class="fire"></canvas>
+
+<script>
+const ITEMS=[
+{id:'001',stem:'ซื้อส้มมา 405 บาท ต้องการกำไร 20% ควรขายเท่าไร?',opts:['486 บาท','485 บาท','492 บาท'],key:0},
+{id:'002',stem:'ปลากระป๋องต้นทุนแพ็คละ 36 บาท ต้องการกำไร 25% ขายเท่าไร?',opts:['45 บาท','42 บาท','44 บาท'],key:0},
+{id:'003',stem:'ลงทุนซื้อของ 4,000 บาท ขายได้กำไร 1,000 บาท กำไรร้อยละเท่าไร?',opts:['25%','40%','20%'],key:0},
+{id:'004',stem:'ข้าวสารกิโลละ 140 บาท ลด 15% ผู้ซื้อจ่ายเท่าไร?',opts:['119 บาท','125 บาท','120 บาท'],key:0},
+{id:'005',stem:'ติดราคาขาย 120 บาท ลดให้ 15 บาท ส่วนลดคิดเป็นกี่เปอร์เซ็นต์?',opts:['12.5%','15%','10%'],key:0},
+{id:'006',stem:'ทุน 250 บาท ต้องการกำไร 10% ควรขายเท่าไร?',opts:['275 บาท','260 บาท','265 บาท'],key:0},
+{id:'007',stem:'ทุน 21,000 บาท ขายกำไร 35% ได้กำไรเป็นเงินเท่าไร?',opts:['7,350 บาท','3,500 บาท','6,300 บาท'],key:0},
+{id:'008',stem:'เสื้อยืดตั้งราคาตัวละ 350 บาท ลดให้ลูกค้า 12% ลูกค้าจ่ายเท่าไร?',opts:['308 บาท','320 บาท','300 บาท'],key:0},
+{id:'009',stem:'เครื่องดื่มต้นทุน 18 บาท ขาย 24 บาท กำไรร้อยละเท่าไร?',opts:['33⅓%','25%','20%'],key:0},
+{id:'010',stem:'วุ้นมะพร้าวลดราคา 20% จาก 60 บาท เหลือเท่าไร?',opts:['48 บาท','50 บาท','46 บาท'],key:0},
+{id:'011',stem:'ต้นทุน 2,450 บาท ลดราคา 40% ให้ลูกค้า ลูกค้าจ่ายเท่าไร?',opts:['1,470 บาท','1,000 บาท','1,540 บาท'],key:0},
+{id:'012',stem:'น้ำผลไม้ขวดละ 60 บาท ขายขาดทุนขวดละ 3 บาท ขาดทุนกี่เปอร์เซ็นต์?',opts:['5%','3%','4%'],key:0},
+{id:'013',stem:'ต้นทุน 3,220 บาท ลดราคาขาย 10% ผู้ซื้อจ่ายเท่าไร?',opts:['2,898 บาท','2,884 บาท','2,980 บาท'],key:0},
+{id:'014',stem:'เค้กตั้งราคา 200 บาท ลด 25% เหลือเท่าไร?',opts:['150 บาท','175 บาท','125 บาท'],key:0},
+{id:'015',stem:'ขายหมวกได้ 360 บาท จากราคาทุน 300 บาท กำไรร้อยละเท่าไร?',opts:['20%','25%','16⅔%'],key:0},
+{id:'016',stem:'ประกาศลดจาก 175 บาท เหลือ 147 บาท ลดกี่เปอร์เซ็นต์?',opts:['16%','28%','14%'],key:0},
+{id:'017',stem:'ทุน 825 บาท ต้องการกำไร 16% ควรขายเท่าไร?',opts:['957 บาท','132 บาท','960 บาท'],key:0},
+{id:'018',stem:'สมุดต้นทุนเล่มละ 28 บาท ขาย 35 บาท กำไรร้อยละเท่าไร?',opts:['25%','20%','30%'],key:0},
+{id:'019',stem:'ลดราคา 5% จากป้าย 1,860 บาท ผู้ซื้อจ่ายเท่าไร?',opts:['1,767 บาท','1,768 บาท','1,760 บาท'],key:0},
+{id:'020',stem:'ผ้าขนหนูราคา 380 บาท ลด 5% ลูกค้าจ่ายเท่าไร?',opts:['361 บาท','362 บาท','360 บาท'],key:0}
+];
+
+const $=id=>document.getElementById(id);
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function shuffleChoices(it){const arr=it.opts.map((v,i)=>({v,i}));const sh=shuffle(arr);
+it.opts=sh.map(x=>x.v);it.key=sh.findIndex(x=>x.i===it.key);return it;}
+
+let idx=0,total=0,combo=1.0,answered=false;
+const elTotal=$("total"),elCombo=$("combo"),secHome=$("home"),secQuiz=$("quiz"),secEnd=$("end"),
+elCaseId=$("caseId"),elStem=$("stem"),elChoices=$("choices"),elStatus=$("status"),elNext=$("nextBtn"),elSlot=$("slot");
+
+function okSFX(){try{const a=new AudioContext();const o=a.createOscillator(),g=a.createGain();
+o.type='triangle';o.frequency.value=900;g.gain.value=.1;o.connect(g);g.connect(a.destination);o.start();
+setTimeout(()=>o.stop(),150);}catch{}}
+function badSFX(){try{const a=new AudioContext();const o=a.createOscillator(),g=a.createGain();
+o.type='sawtooth';o.frequency.value=300;g.gain.value=.1;o.connect(g);g.connect(a.destination);
+o.start();setTimeout(()=>o.stop(),300);}catch{}}
+
+function render(){
+  answered=false;elNext.disabled=true;elStatus.textContent='';
+  const it=shuffleChoices(ITEMS[idx]);
+  elCaseId.textContent=`Q-${it.id}`;elStem.textContent=it.stem;elChoices.innerHTML='';
+  it.opts.forEach((op,i)=>{
+    const b=document.createElement('button');
+    b.className='choice';b.innerHTML=`<b>${String.fromCharCode(65+i)}.</b> ${op}`;
+    b.onclick=()=>answer(i,b,it);
+    elChoices.appendChild(b);
+  });
+}
+function answer(i,btn,it){
+  if(answered)return;answered=true;
+  const nodes=[...document.querySelectorAll('.choice')];
+  nodes.forEach(n=>n.disabled=true);
+  if(i===it.key){
+    okSFX();btn.classList.add('correct');
+    combo=Math.min(1.5,+(combo+0.1).toFixed(1));
+    total+=Math.round(5*combo);
+    elStatus.innerHTML=`✅ ถูกต้อง! +${Math.round(5*combo)} คะแนน`;
+  }else{
+    badSFX();btn.classList.add('wrong');
+    nodes[it.key].classList.add('correct');
+    combo=1.0;
+    elStatus.innerHTML=`❌ ผิด คำตอบที่ถูกคือ ${it.opts[it.key]}`;
+  }
+  elTotal.textContent=total;elCombo.textContent=`x${combo.toFixed(1)}`;
+  elNext.disabled=false;
+}
+function nextQ(){idx++;if(idx<ITEMS.length){render();}else{finish();}}
+function finish(){
+  secQuiz.style.display='none';secEnd.style.display='block';
+  $("endMsg").innerHTML=`คุณได้คะแนน ${total} จาก ${ITEMS.length*10}<br>ยอดเยี่ยมมาก!`;
+  fireworks($("fire1"));
+}
+function fireworks(c){const ctx=c.getContext('2d');c.width=innerWidth;c.height=innerHeight;const p=[];
+for(let k=0;k<6;k++){const cx=Math.random()*c.width,cy=Math.random()*c.height*.5+100,col=`hsl(${Math.random()*360},90%,60%)`;
+for(let i=0;i<50;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*3+1;
+p.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:80,color:col});}}let t=0;
+(function loop(){t++;ctx.fillStyle='rgba(0,0,0,.06)';ctx.fillRect(0,0,c.width,c.height);
+p.forEach(e=>{e.x+=e.vx;e.y+=e.vy;e.vy+=.03;e.life--;ctx.fillStyle=e.color;ctx.fillRect(e.x,e.y,2,2);});
+if(t<150)requestAnimationFrame(loop);})();}
+
+$("startBtn").onclick=()=>{idx=0;total=0;combo=1;secHome.style.display='none';secQuiz.style.display='block';render();};
+$("nextBtn").onclick=nextQ;
+</script>
+</body>
+</html>
